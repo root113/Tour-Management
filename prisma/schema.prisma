@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PopYear {
+  id String @id @default(ulid())
+  year Int @unique(map: "unique_pop_year") @db.SmallInt
+  start_date DateTime @db.Date
+  end_date DateTime @db.Date
+
+  pop_day PopDay[]
+
+  @@unique([start_date, end_date], map: "unique_pop_year_range")
+
+  // TODO: After running prisma migrate dev
+  // add a SQL statement as below:
+  /* 
+  * ALTER TABLE "PopYear"
+  * ADD CONSTRAINT check_start_end
+  * CHECK (start_date <= end_date)
+  */
+}
+
+model PopDay {
+  id String @id @default(ulid())
+  day_index Int @unique(map: "unique_pop_day") @db.SmallInt
+  real_date DateTime @unique @db.Date
+  pop_year_id String
+  event_id String?
+
+  pop_year PopYear @relation(fields: [pop_year_id], references: [id])
+  event Event? @relation(fields: [event_id], references: [id])
+
+  concert Concert[]
+
+  @@unique([event_id], map: "unique_pop_day_event")
+
+  // TODO: check day_index to be in between 1-56
+  /*
+    ALTER TABLE "PopDay"
+    ADD CONSTRAINT check_day_index_range
+    CHECK (day_index BETWEEN 1 AND 56);
+  */
+}
+
+model City {
+  id String @id @default(ulid())
+  name String @unique(map: "unique_city_name") @db.VarChar(25)
+
+  club Club[]
+}
+
+model Club {
+  id String @id @default(ulid())
+  name String @unique(map: "unique_club_name") @db.VarChar(80)
+  genre Genre @map("club_genre")
+  city_id String
+
+  city City @relation(fields: [city_id], references: [id])
+
+  concert Concert[]
+}
+
+model Band {
+  id String @id @default(ulid())
+  name String @unique(map: "unique_band_name") @db.VarChar(60)
+  genre Genre @map("band_genre")
+
+  concert Concert[]
+}
+
+model Concert {
+  id String @id @default(ulid())
+  date DateTime @map("concert_date") @db.Date
+  hour ConcertHour @map("concert_hour")
+  genre Genre @map("concert_genre")
+  pop_day_id String
+  club_id String
+  band_id String
+
+  pop_day PopDay @relation(fields: [pop_day_id], references: [id])
+  club Club @relation(fields: [club_id], references: [id])
+  band Band @relation(fields: [band_id], references: [id])
+
+  @@unique([date, hour, club_id], map: "unique_concert_entry")
+}
+
+model Event {
+  id String @id @default(ulid())
+  name String @unique @db.VarChar(255)
+
+  pop_day PopDay?
+}
+
+enum Genre {
+  AFRICAN_MUSIC @map("African Music")
+  BLUES @map("Blues")
+  CLASSICAL_MUSIC @map("Classical Music")
+  COUNTRY_WESTERN @map("Country & Western")
+  ELECTRONICA @map("Electronica")
+  FLAMENCO @map("Flamenco")
+  HEAVY_METAL @map("Heavy Metal")
+  HIP_HOP @map("Hip Hop")
+  JAZZ @map("Jazz")
+  LATIN_MUSIC @map("Latin Music")
+  MODERN_ROCK @map("Modern Rock")
+  POP @map("Pop")
+  PUNK_ROCK @map("Punk Rock")
+  REGGAE @map("Reggae") 
+  RHYTHM_BLUES @map("R&B")
+  ROCK @map("Rock")
+  WORLD_MUSIC @map("World Music")
+}
+
+enum ConcertHour {
+  PM_12 @map("12:00")
+  PM_14 @map("14:00")
+  PM_16 @map("16:00")
+  PM_18 @map("18:00")
+  PM_20 @map("20:00")
+  PM_22 @map("22:00")
+}

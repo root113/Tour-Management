@@ -1,0 +1,9 @@
+.env
+.env.test
+.roadmap
+
+/node_modules
+/dist
+/dist-seed
+
+/src/generated/prisma

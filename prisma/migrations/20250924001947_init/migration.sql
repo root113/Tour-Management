@@ -120,3 +120,9 @@ ALTER TABLE "public"."Concert" ADD CONSTRAINT "Concert_club_id_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "public"."Concert" ADD CONSTRAINT "Concert_band_id_fkey" FOREIGN KEY ("band_id") REFERENCES "public"."Band"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddCheck
+ALTER TABLE "public"."PopYear" ADD CONSTRAINT "check_start_end" CHECK ("start_date" <= "end_date");
+
+-- AddCheck
+ALTER TABLE "public"."PopDay" ADD CONSTRAINT "check_day_index_range" CHECK ("day_index" BETWEEN 1 AND 56);

@@ -17,14 +17,6 @@ model PopYear {
   pop_day PopDay[]
 
   @@unique([start_date, end_date], map: "unique_pop_year_range")
-
-  // TODO: After running prisma migrate dev
-  // add a SQL statement as below:
-  /* 
-  * ALTER TABLE "PopYear"
-  * ADD CONSTRAINT check_start_end
-  * CHECK (start_date <= end_date)
-  */
 }
 
 model PopDay {
@@ -40,13 +32,6 @@ model PopDay {
   concert Concert[]
 
   @@unique([event_id], map: "unique_pop_day_event")
-
-  // TODO: check day_index to be in between 1-56
-  /*
-    ALTER TABLE "PopDay"
-    ADD CONSTRAINT check_day_index_range
-    CHECK (day_index BETWEEN 1 AND 56);
-  */
 }
 
 model City {

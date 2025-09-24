@@ -1,11 +1,11 @@
 import express from 'express';
-// import routes
+import bandRoutes from './routes/band.routes'
 // import handlers
 
 const app = express();
 
 app.use(express.json());
-// app.use('/path', routes);
+app.use('/api/v1/band/', bandRoutes);
 // app.use(handlers);
 
 export default app;

@@ -1,6 +1,6 @@
 # Prisma schema — DB tables, diagram, and human-readable documentation
 
-This document describes your final `schema.prisma`. It contains:
+This document describes the final `schema.prisma`. It contains:
 
 - An ASCII ER diagram showing tables and relations.
 - Per-table field lists (types, constraints, indexes).
@@ -28,7 +28,7 @@ This document describes your final `schema.prisma`. It contains:
      |                         | Concert   |<---* 1 --->| Club |      
      |                         +-----------+           +-----------+   
      |                          * | 1  *                | club has |   
-     |                            |                    | many     |   
+     |                            |                     | many     |   
      |                            v                    +---------+   
      |                         +-------+                               
      |                         | Band  |                               
@@ -44,7 +44,7 @@ Note: ASCII diagram above focuses on the key relations: PopYear → PopDay → C
 
 ---
 
-## Tables & fields (human readable)
+## Tables & fields
 
 ### PopYear
 - **Primary key:** `id` (String, ULID)
@@ -143,7 +143,7 @@ Note: Each PopDay may reference an Event via `event_id`. `@@unique([event_id])` 
 ---
 
 ## Enums
-- **Genre**: Human-readable labels stored via `@map`, e.g. `RHYTHM_BLUES @map("R&B")`.
+- **Genre**: Readable labels stored via `@map`, e.g. `RHYTHM_BLUES @map("R&B")`.
 - **ConcertHour**: Fixed slots `12:00, 14:00, 16:00, 18:00, 20:00, 22:00` mapped via `@map`.
 
 ---

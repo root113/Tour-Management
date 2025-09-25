@@ -16,7 +16,7 @@ This document describes the final `schema.prisma`. It contains:
 ```
 +-----------+       1    *      +---------+      *    1     +---------+
 |  PopYear  |-------------------|  PopDay |------------------|  Event  |
-| (years)   |                   | (days)  |                  | (opt)   |
+|  (years)  |                   |  (days) |                  |  (opt)  |
 +-----------+                   +---------+                  +---------+
      |1                             |1  *                         \
      |                               |                             \
@@ -25,11 +25,11 @@ This document describes the final `schema.prisma`. It contains:
      |                               |                               
      |                               v                               
      |                         +-----------+                          
-     |                         | Concert   |<---* 1 --->| Club |      
+     |                         |  Concert  |<---* 1 --->| Club |      
      |                         +-----------+           +-----------+   
-     |                          * | 1  *                | club has |   
-     |                            |                     | many     |   
-     |                            v                    +---------+   
+     |                          * | 1  *               |  club has |   
+     |                            |                    |  many     |   
+     |                            v                    +-----------+   
      |                         +-------+                               
      |                         | Band  |                               
      |                         +-------+                               
@@ -108,6 +108,7 @@ Notes:
 - **Fields:**
   - `name` String @db.VarChar(60) — **unique** (`unique_band_name`)
   - `genre` Genre
+  - `status` Boolean @default(true)
 - **Relations:**
   - `concert` Concert[] (one Band has many Concerts)
 

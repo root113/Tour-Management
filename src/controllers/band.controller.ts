@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import asyncHandler from '../middlewares/asyncHandler'
+import asyncHandler from "../middlewares/asyncHandler";
 // import service
 // import dtos
 
@@ -87,7 +87,7 @@ const getBandLastClubVisit = asyncHandler(async (req: Request, res: Response) =>
 
 
 
-//* --- CREATE OPERATIONS ---
+//* --- POST OPERATIONS ---
 
 const createBand = asyncHandler(async (req: Request, res: Response) => {
     // to be implemented
@@ -113,7 +113,7 @@ const createBandConcertsInClub = asyncHandler(async (req: Request, res: Response
 
 
 
-//* --- UPDATE OPERATIONS ---
+//* --- PUT OPERATIONS ---
 
 const updateBandInfo = asyncHandler(async (req: Request, res: Response) => {
     // to be implemented

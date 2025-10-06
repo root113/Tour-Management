@@ -1,10 +1,12 @@
 {
   "name": "popmundo-tour-calculator",
   "version": "1.0.0",
+  "private": true,
   "description": "",
-  "main": "./src/index.js",
+  "main": "./src/index.ts",
   "scripts": {
     "dev": "nodemon --watch src --ext ts,js,json --exec \"ts-node\" src/index.ts",
+    "prebuild": "ts-node ./src/scripts/entrypoint.ts",
     "build": "tsc",
     "prestart": "npm run build",
     "start": "node ./dist/index.ts",
@@ -17,11 +19,13 @@
     "@prisma/client": "^6.16.2",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
-    "express-async-handler": "^1.2.0"
+    "express-async-handler": "^1.2.0",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.5.2",
+    "@types/pg": "^8.15.5",
     "prisma": "^6.16.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"

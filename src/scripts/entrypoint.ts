@@ -18,7 +18,7 @@ function getConnectionString(): string {
 
 async function waitForPostgres() {
     const conn = getConnectionString();
-
+    
     for(let i=0; i<MAX_RETRIES; i++) {
         try {
             const client = new Client({ connectionString: conn });
@@ -29,6 +29,7 @@ async function waitForPostgres() {
             return;
         } catch(err) {
             // TODO: replace with a convenient error handler
+            console.error(err);
             const attempt = i+1;
             console.log(`Postgres not ready (attempt ${attempt}/${MAX_RETRIES}). Retrying in ${RETRY_DELAY_MS}ms...`);
             await new Promise((res) => setTimeout(res, RETRY_DELAY_MS));

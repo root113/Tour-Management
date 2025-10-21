@@ -6,7 +6,6 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "nodemon --watch src --ext ts,js,json --exec \"ts-node\" src/index.ts",
-    "prebuild": "ts-node ./src/scripts/entrypoint.ts",
     "build": "tsc",
     "prestart": "npm run build",
     "start": "node ./dist/index.ts",

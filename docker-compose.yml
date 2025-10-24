@@ -16,25 +16,57 @@ services:
       start_period: 25s
     networks:
       - app-net
-  
+
+  redis_container:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    networks:
+      - app-net
+
   app_container:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: "${DATABASE_URL}"
+      REDIS_URL: "${REDIS_URL}"
+      JWT_ACCESS_TOKEN_SECRET: "${JWT_ACCESS_TOKEN_SECRET}"
+      JWT_REFRESH_TOKEN_SECRET: "${JWT_REFRESH_TOKEN_SECRET}"
+      JWT_ACCESS_TOKEN_EXPIRES: "${JWT_ACCESS_TOKEN_EXPIRES}"
+      JWT_REFRESH_TOKEN_EXPIRES: "${JWT_REFRESH_TOKEN_EXPIRES}"
       DB_HOST: db_pg_container
       DB_PORT: "${PG_PORT}"
       APP_PORT: "${APP_PORT}"
+      NODE_ENV: "${NODE_ENV}"
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN}"
+      COOKIE_SECURE: "${COOKIE_SECURE}"
     depends_on:
       - db_pg_container
+      - redis_container
     ports:
       - "${APP_PORT}:${APP_PORT}"
     networks:
       - app-net
 
+  nginx_container:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./deploy/nginx/certs:/etc/nginx/certs:ro # put certs here in prod
+    depends_on:
+      - app_container
+    networks:
+      - app-net
+
 volumes:
   pgdata:
+  redisdata:
 
 networks:
   app-net:

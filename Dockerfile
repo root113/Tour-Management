@@ -17,5 +17,6 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 ENV NODE_ENV=production
+ENV COOKIE_SECURE=true
 EXPOSE ${APP_PORT}
 CMD ["node", "dist/scripts/entrypoint.js"]

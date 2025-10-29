@@ -33,7 +33,7 @@ export function generateCsrf() {
 
 export async function createRefreshSession(userId: string) {
     const { token, jti } = signRefreshToken(userId);
-    const ttl = parseRefreshExpiresToSeconds(process.env.JWT_REFRESH_TOKEN_EXPIRES || "30d");
+    const ttl = parseRefreshExpiresToSeconds(process.env.JWT_REFRESH_TOKEN_EXPIRES || '14d');
     const csrf = generateCsrf();
 
     await storeRefreshJti(jti, userId, ttl);
@@ -63,5 +63,5 @@ function parseRefreshExpiresToSeconds(s: string) {
     }
     // fallback seconds
     const secs = parseInt(s, 10);
-    return isNaN(secs) ? 30*24*60*60 : secs;
+    return isNaN(secs) ? 14*24*60*60 : secs;
 }

@@ -151,7 +151,7 @@ router.post('/logout', async (req, res) => {
     } catch(err) {
         // clear cookies anyway
         res.clearCookie('refresh_token', { path: '/' });
-        res.clearCookie('csrf-token', { path: '/' });
+        res.clearCookie('csrf_token', { path: '/' });
         return res.status(200).json({ ok: true });
     }
 

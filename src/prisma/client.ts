@@ -2,6 +2,8 @@ import type { PrismaClient } from "@prisma/client";
 import path from "path";
 import fs from "fs";
 
+import logger from "../lib/logger";
+
 let _client: PrismaClient | null = null;
 
 function requireGeneratedClient(): any | null {
@@ -49,7 +51,106 @@ function createPrismaClient(): PrismaClient {
     //* If Candidate itself is an object with PrismaClient property (rare), normalize:
     const ClientCtor = Candidate.PrismaClient ? Candidate.PrismaClient : Candidate;
 
-    return new ClientCtor();
+    //* keep low noise by default, enable query logging only when debugging
+    const LOG_LEVEL = (process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug')).toLocaleLowerCase();
+    const enableQueryEvents = LOG_LEVEL === 'debug' || LOG_LEVEL === 'trace';
+    const slowQueryThresholdMs = Number(process.env.PRISMA_SLOW_QUERY_MS ?? 200);
+
+    // Prisma supports the `log` option (level + emit:'event') so we can use $on listeners
+    // Include query events only when we plan to handle them (avoid unnecessary overhead)
+    const logArray: any[] = [
+        { level: 'warn', emit: 'event' },
+        { level: 'error', emit: 'event' },
+    ];
+    if(enableQueryEvents) logArray.unshift({ level: 'query', emit: 'event' });
+
+    const ctorArgs = { log: logArray };
+    const client: any = new ClientCtor(ctorArgs);
+
+    // helper to safely stringify params without producing huge log entries
+    function safeSerializeParams(params: unknown, maxLen = 1000) {
+        try {
+            // avoid circular JSON issues
+            const s = typeof params === 'string' ? params : JSON.stringify(params);
+            if(!s) return s;
+            return s.length > maxLen ? s.slice(0, maxLen) + '... (truncated)' : s;
+        } catch(err) {
+            try {
+                // fallback via util.inspect could be used but keep it lightweight
+                return String(params).slice(0, maxLen) + (String(params).length > maxLen ? '... (truncated)' : '');
+            } catch {
+                return '[unserializable params]';
+            }
+        }
+    }
+
+    // wire up event handlers if client exposes $on (Prisma >= 2.12+)
+    if(typeof client.$on === 'function') {
+        client.$on('query', (e: any) => {
+            // e has { query, params, duration, target } in modern Prisma
+            try {
+                const duration = typeof e.duration === 'number' ? e.duration : (e.elapsed ?? 0);
+                const shouldLog = enableQueryEvents || (typeof duration === 'number' && duration >= slowQueryThresholdMs);
+
+                if(!shouldLog) return;
+
+                // when trace enabled, include params (truncated). Otherwise just log query & duration
+                if(LOG_LEVEL === 'trace') {
+                    logger.debug(
+                        {
+                            prisma: true,
+                            query: e.query,
+                            params: safeSerializeParams(e.params),
+                            duration,
+                            target: e.target,
+                        },
+                        `Prisma query (${duration}ms)`
+                    );
+                } else if(enableQueryEvents) {
+                    // debug-mode, lighter-weight info
+                    logger.info(
+                        {
+                            prisma: true,
+                            duration,
+                            query: e.query,
+                            target: e.target,
+                        },
+                        `Prisma query (${duration}ms)`,
+                    );
+                } else {
+                    // slow queries in production
+                    logger.warn(
+                        {
+                            prisma: true,
+                            duration,
+                            query: e.query,
+                            target: e.target,
+                        },
+                        `Prisma slow query (${duration}ms)`,
+                    );
+                }
+            } catch(err) {
+                // never allow logger issues to break app logic
+                logger.debug({ err }, 'Error while logging prisma query!');
+            }
+        });
+
+        client.$on('error', (e: any) => {
+            // e typically has .message/.stack
+            logger.error({ prisma: true, error: e }, 'Prisma runtime error');
+        });
+        client.$on('warn', (e: any) => {
+            logger.warn({ prisma: true, warn: e }, 'Prisma warning');
+        });
+
+        if(enableQueryEvents) {
+            client.$on('info', (e: any) => {
+                logger.debug({ prisma: true, info: e }, 'Prisma info');
+            });
+        }
+    }
+
+    return client as PrismaClient;
 }
 
 function getPrisma(): PrismaClient {

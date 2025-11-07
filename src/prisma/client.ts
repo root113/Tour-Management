@@ -194,6 +194,23 @@ const handler: ProxyHandler<Record<string, unknown>> = {
     },
 };
 
+export async function disconnectPrisma(): Promise<boolean> {
+    try {
+        const prismaInstance = typeof _client !== 'undefined' ? _client : null;
+        if(prismaInstance && typeof (prismaInstance as any).$disconnect === 'function') {
+            await (prismaInstance as any).$disconnect();
+            logger.info('Prisma client disconnected');
+            return true;
+        } else {
+            logger.info('Prisma client was not initialized, skipping disconnect');
+            return false;
+        }
+    } catch(err) {
+        logger.error({ err }, 'Error disconnecting Prisma client!');
+        return false;
+    }
+}
+
 const lazyPrisma = new Proxy({}, handler) as unknown as PrismaClient;
 
 export default lazyPrisma;

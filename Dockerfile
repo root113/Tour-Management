@@ -10,6 +10,7 @@ RUN npm run build
 
 # runtime stage
 FROM node:18-alpine AS runner
+STOPSIGNAL SIGTERM
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --production

@@ -7,6 +7,8 @@ export async function startServer(PORT = Number(process.env.APP_PORT)): Promise<
         try {
             const server = app.listen(PORT, () => {
                 logger.info({ port: PORT }, 'Server is listening...');
+                (server as any).keepAliveTimeout = 61_000;
+                (server as any).headersTimeout = 65_000;
                 resolve(server);
             });
             // TODO: optionally handle server errors with a custom middleware

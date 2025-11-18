@@ -17,7 +17,7 @@ function requireGeneratedClient(): any | null {
             const gen = require(p);
             return gen;
         } catch(err) {
-            console.warn(`[prisma] require generated client at ${p} failed:`, (err as any)?.message ?? err);
+            logger.warn({ err }, `[prisma] require generated client at ${p} failed.`);
         }
     }
     return null;

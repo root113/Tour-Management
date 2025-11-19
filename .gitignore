@@ -9,6 +9,11 @@
 /dist-seed
 
 /src/generated/prisma
+/prisma/migrations/
+
+/deploy/nginx/certs
+/deploy/nginx/certs/*
+/deploy/nginx/logs/
 
 
 ### Linux ###

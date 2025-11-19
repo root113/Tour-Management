@@ -45,20 +45,25 @@ services:
     depends_on:
       - db_pg_container
       - redis
-    ports:
-      - "${APP_PORT}:${APP_PORT}"
+    expose:
+      - "${APP_PORT}"
     networks:
       - app-net
 
   nginx:
     image: nginx:stable-alpine
     restart: unless-stopped
+    environment:
+      NGINX_HTTP_PORT: "${NGINX_HTTP_PORT}"
+      NGINX_HTTPS_PORT: "${NGINX_HTTPS_PORT}"
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT}:${NGINX_HTTP_PORT}"
+      #- "${NGINX_HTTPS_PORT}:${NGINX_HTTPS_PORT}"
     volumes:
       - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./deploy/nginx/certs:/etc/nginx/certs:ro # put certs here in prod
+      #- ./deploy/nginx/certs:/etc/nginx/certs:ro # put certs here in prod
+      - ./deploy/nginx/html:/usr/share/nginx/html:ro
+      - ./deploy/nginx/logs:/var/log/nginx
     depends_on:
       - app_container
     networks:

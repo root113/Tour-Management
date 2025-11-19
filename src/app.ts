@@ -19,6 +19,8 @@ import logger from "./lib/logger";
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(pinoHttp({
     logger,
     autoLogging: false, // disable pino-http start/finish logs to avoid duplication

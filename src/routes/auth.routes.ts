@@ -1,7 +1,8 @@
 import { Router } from "express";
 import argon2 from "argon2";
-import prisma from "../prisma/client";
 import { treeifyError, z } from "zod";
+
+import prisma from "../prisma/client";
 import { signAccessToken, verifyRefreshToken } from "../utils/jwt.util";
 import { 
     createRefreshSession, 
@@ -10,6 +11,7 @@ import {
     rotateRefreshToken,
     deleteRefreshAndCsrf,
 } from "../services/auth.service";
+import logger from "../lib/logger";
 
 const router = Router();
 
@@ -150,9 +152,11 @@ router.post('/logout', async (req, res) => {
         payload = verifyRefreshToken(refreshToken);
     } catch(err) {
         // clear cookies anyway
+        logger.warn({ err }, 'Could not verify refresh token. Clearing cookies anyway...');
         res.clearCookie('refresh_token', { path: '/' });
         res.clearCookie('csrf_token', { path: '/' });
-        return res.status(200).json({ ok: true });
+        // send successful status due to indempotency and to avoid leaking information
+        return res.status(204);
     }
 
     const jti = payload.jti;

@@ -156,7 +156,7 @@ router.post('/logout', async (req, res) => {
         res.clearCookie('refresh_token', { path: '/' });
         res.clearCookie('csrf_token', { path: '/' });
         // send successful status due to indempotency and to avoid leaking information
-        return res.status(204);
+        return res.sendStatus(204);
     }
 
     const jti = payload.jti;

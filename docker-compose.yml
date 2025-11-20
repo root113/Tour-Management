@@ -18,7 +18,7 @@ services:
       - app-net
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     volumes:
       - redisdata:/data

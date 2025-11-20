@@ -1,5 +1,5 @@
 # builder stage
-FROM node:18-alpine AS builder
+FROM node:25-alpine3.21 AS builder
 WORKDIR /app
 COPY package*.json tsconfig.json ./
 COPY prisma ./prisma/
@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build
 
 # runtime stage
-FROM node:18-alpine AS runner
+FROM node:25-alpine3.21 AS runner
 STOPSIGNAL SIGTERM
 WORKDIR /app
 COPY package*.json ./

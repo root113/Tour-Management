@@ -33,19 +33,27 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(requestLoggerMiddleware);
 
+const isProd = process.env.NODE_ENV === 'production';
+
 //& CORS: configure based on your frontend origin
 // TODO: uncomment after frontend implementation
-/*const allowedOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
-app.use(cors({
-    origin: allowedOrigin,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-}));*/
+/*
+if(!isProd) {
+    const cors = import('cors') as any;
+    const allowedOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
+    
+    app.use(cors({
+        origin: allowedOrigin,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    }));
+}
+*/
 
 // rate limiting for auth endpoints
 const authLimiter = rateLimit({
-    windowMs: 15*60*1000,
-    max: 100,
+    windowMs: Number(process.env.AUTH_RATE_WINDOW_MS) || 15*60*1000,
+    max: Number(process.env.AUTH_RATE_MAX) || (isProd ? 100 : 1000),
     message: { error: 'Too many requests, try again later.' }
 });
 
@@ -56,6 +64,10 @@ app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/v1/environment', environmentRoutes);
 // app.use(handlers);
 app.use(errorLogger);
+
+// health/readiness endpoints
+app.get('/health', (_req, _res) => _res.status(200).json({ ok: true, env: process.env.NODE_ENV }));
+app.get('/ready', (_req, _res) => _res.status(200).json({ ready: true }));
 
 // TODO: example protected endpoint, delete after confirmation
 app.get('/protected', authenticate, (req, res) => {

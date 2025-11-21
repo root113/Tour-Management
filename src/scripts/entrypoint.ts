@@ -1,6 +1,7 @@
 import { Client } from "pg";
 import type { Server } from "http";
 import { startServer } from "../index";
+import { spawnSync } from "child_process";
 
 import { disconnectPrisma } from "../prisma/client";
 import logger from "../lib/logger";
@@ -10,6 +11,9 @@ const RETRY_DELAY_MS = 2000;
 
 const GRACEFUL_SHUTDOWN_TIMEOUT_MS = Number(process.env.GRACEFUL_SHUTDOWN_TIMEOUT_MS || 30_000);
 const PRISMA_DISCONNECT_TIMEOUT_MS = Number(process.env.PRISMA_DISCONNECT_TIMEOUT_MS || 10_000);
+
+const SKIP_DB_WAIT = (process.env.SKIP_DB_WAIT || 'false').toLocaleLowerCase() === 'true';
+const RUN_MIGRATIONS = (process.env.RUN_MIGRATIONS || 'false').toLocaleLowerCase() === 'true';
 
 function getConnectionString(): string {
     if(process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -44,6 +48,29 @@ async function waitForPostgres() {
     }
     // TODO: replace with custom error handler
     throw new Error('Postgres did not become ready in time!');
+}
+
+function runMigrationsSyncIfConfigured() {
+    if(!RUN_MIGRATIONS) {
+        logger.info({ RUN_MIGRATIONS }, 'Skipping in-container migrations');
+        return;
+    }
+
+    logger.info({ RUN_MIGRATIONS }, 'Applying migrations synchronously...');
+    const res = spawnSync('npx', ['prisma', 'migrate', 'deploy'], {
+        stdio: 'inherit',
+        shell: false,
+    });
+
+    if(res.error) {
+        logger.error({ err: res.error }, 'An error has occured during migrations!');
+        throw res.error; //TODO: better error handling
+    }
+    if(res.status !== 0) {
+        logger.debug({ status: res.status }, `prisma migrate deploy exited with status ${res.status}`);
+        throw new Error('Migration error!');
+    }
+    logger.info('Migrations applied successfully');
 }
 
 let serverInstance: Server | null = null;
@@ -113,7 +140,24 @@ async function gracefulShutdown(signal: string) {
 }
 
 async function start() {
-    await waitForPostgres();
+
+    // handle uncaught exceptions/rejections for visibility and try shutdown gracefully
+    process.on('unhandledRejection', (reason) => {
+        logger.error({ reason }, 'Unhandled Rejection: initiating graceful shutdown...');
+        void gracefulShutdown('unhandledRejection');
+    });
+    process.on('uncaughtException', (err) => {
+        logger.fatal({ err }, 'Uncaught Exception: initiating graceful shutdown...');
+        void gracefulShutdown('uncaughtException');
+    });
+
+    if(!SKIP_DB_WAIT) {
+        logger.info({ SKIP_DB_WAIT }, 'Waiting for DB readiness checks');
+        await waitForPostgres();
+    }
+    else logger.info({ SKIP_DB_WAIT }, 'Skipping DB readiness checks');
+
+    if(RUN_MIGRATIONS) runMigrationsSyncIfConfigured();
 
     const server = await startServer();
     serverInstance = server;
@@ -132,16 +176,6 @@ async function start() {
         process.once(sig, () => {
             void gracefulShutdown(sig);
         });
-    });
-
-    // handle uncaught exceptions/rejections for visibility and try shutdown gracefully
-    process.on('unhandledRejection', (reason) => {
-        logger.error({ reason }, 'Unhandled Rejection: initiating graceful shutdown...');
-        void gracefulShutdown('unhandledRejection');
-    });
-    process.on('uncaughtException', (err) => {
-        logger.error({ err }, 'Uncaught Exception: initiating graceful shutdown...');
-        void gracefulShutdown('uncaughtException');
     });
 }
 

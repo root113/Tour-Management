@@ -76,7 +76,7 @@ server {
 
     # maintenance fallback
     error_page 502 503 504 /maintenance.html;
-    location = /maintenance.html {
+    location = /html/maintenance.html {
         root /usr/share/nginx/html;
         internal;
     }

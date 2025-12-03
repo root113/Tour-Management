@@ -1,42 +1,84 @@
+import { v4 as uuidv4 } from "uuid";
 import app from "./app";
 import logger from "./lib/logger";
+import { resolveError } from "./utils/error/errorFactory.util";
+
 import type { Server } from "http";
+
+let server: Server | undefined;
 
 export async function startServer(PORT = Number(process.env.APP_PORT)): Promise<Server> {
     return new Promise((resolve, reject) => {
         try {
-            const server = app.listen(PORT, () => {
+            server = app.listen(PORT, () => {
                 logger.info({ port: PORT }, 'Server is listening...');
                 (server as any).keepAliveTimeout = 61_000;
                 (server as any).headersTimeout = 65_000;
-                resolve(server);
+                resolve(server as Server);
             });
 
-            // TODO: optionally handle server errors with a custom middleware
             server.on('error', (err) => {
-                logger.error({ err }, 'Server error!');
-                reject(err);
+                const mapped = resolveError(err);
+                logger.error({ err: mapped, original: err }, 'Server error!');
+                reject(mapped);
             });
 
         } catch(err) {
-            // TODO: implement a better error handler
-            logger.error({ err }, 'Failed starting server!');
-            reject(err);
+            const mapped = resolveError(err);
+            logger.error({ err: mapped, original: err }, 'Failed starting server!');
+            reject(mapped);
         }
     });
 }
 
+async function shutdown(exitCode = 0, reason?: string) {
+    try {
+        const id = uuidv4();
+        logger.info({ id, reason }, 'Shutdown initiated');
+
+        if(server) {
+            await new Promise<void>((resolve) => {
+                server!.close((err?: Error) => {
+                    if(err) logger.warn({ err }, 'Error during process shutdown server');
+                    resolve();
+                });
+
+                // safety: force exit after ms
+                setTimeout(() => {
+                    logger.warn({ id }, 'Forcing shutdown due to timeout...');
+                    resolve();
+                }, 10_000).unref();
+            });
+        }
+        logger.info({ id, exitCode }, 'Shutdown complete; exiting...');
+    } catch(logErr) { logger.error({ logErr }, 'Error during shutdown'); }
+    finally { process.exit(exitCode); }
+}
+
 if(require.main === module) {
-    
     process.on('unhandledRejection', (reason) => {
-        logger.error({ reason }, 'unhandledRejection');
+        try {
+            const mapped = resolveError(reason);
+            logger.error({ reason: mapped }, 'unhandledRejection - mapped');
+            // unknown rejection: state might be inconsistent
+            shutdown(1, 'unhandledRejection');
+        } catch(err) {
+            const mapped = resolveError(err);
+            logger.error({ err: mapped, original: err }, 'Error while processing unhandledRejection');
+            shutdown(1, 'unhandledRejection');
+        }
     });
+
     process.on('uncaughtException', (error) => {
-        logger.fatal({ error }, 'uncaughtException - exiting...');
+        try {
+            const mapped = resolveError(error);
+            logger.fatal({ error: mapped }, 'uncaughtException - exiting...');
+        } catch(err) { logger.fatal({ err }, 'uncaughtException: failed to map error'); }
+        finally { shutdown(1, 'uncaughtException'); }
     });
 
     startServer().catch((err) => {
         logger.error({ err }, 'Failed to start server!');
-        process.exit(1);
+        setTimeout(() => process.exit(1), 100).unref();
     });
 }

@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { Logger } from "pino";
+
 import { sanitizeObject, extractClientInfo } from "../../utils/logger.util";
+import { resolveError } from "../../utils/error/errorFactory.util";
 
 export function requestLoggerMiddleware(req: Request, res: Response, next: NextFunction) {
     const log = (req as any).log as Logger;
@@ -24,7 +26,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
             userId: (req as any).user?.id,
         }, 'handling request...');
     } catch(err) {
-        log.debug({ err }, 'failed to emit request_start!');
+        log.debug({ err: resolveError(err) }, 'failed to emit request_start!');
     }
 
     const onAborted = () => {
@@ -42,7 +44,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
                 userId: (req as any).user?.id,
             }, 'request aborted by client');
         } catch(err) {
-            log.debug({ err }, 'failed to emit request_aborted!');
+            log.debug({ err: resolveError(err) }, 'failed to emit request_aborted!');
         }
     };
     req.once('aborted', onAborted);
@@ -66,7 +68,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
                 }, 'request completed');
             }
         } catch(err) {
-            log.debug({ err }, 'failed to emit request_end!');
+            log.debug({ err: resolveError(err) }, 'failed to emit request_end!');
         }
     });
 
@@ -91,7 +93,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
                 }, 'request closed before finish');
             }
         } catch(err) {
-            log.debug({ err }, 'failed to emit request_close!');
+            log.debug({ err: resolveError(err) }, 'failed to emit request_close!');
         }
     });
 

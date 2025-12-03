@@ -1,8 +1,10 @@
-import type { PrismaClient } from "@prisma/client";
 import path from "path";
 import fs from "fs";
 
 import logger from "../lib/logger";
+import { resolveError } from "../utils/error/errorFactory.util";
+
+import type { PrismaClient } from "@prisma/client";
 
 let _client: PrismaClient | null = null;
 
@@ -17,7 +19,7 @@ function requireGeneratedClient(): any | null {
             const gen = require(p);
             return gen;
         } catch(err) {
-            logger.warn({ err }, `[prisma] require generated client at ${p} failed.`);
+            logger.warn({ err: resolveError(err) }, `[prisma] require generated client at ${p} failed.`);
         }
     }
     return null;
@@ -26,11 +28,8 @@ function requireGeneratedClient(): any | null {
 function requirePrismaClientModule(): any {
     const gen = requireGeneratedClient();
     if(gen) return gen;
-    try {
-        return require('@prisma/client');
-    } catch(err) {
-        throw err;
-    }
+    try { return require('@prisma/client'); } 
+    catch(err) { throw resolveError(err); }
 }
 
 function createPrismaClient(): PrismaClient {
@@ -74,13 +73,11 @@ function createPrismaClient(): PrismaClient {
             const s = typeof params === 'string' ? params : JSON.stringify(params);
             if(!s) return s;
             return s.length > maxLen ? s.slice(0, maxLen) + '... (truncated)' : s;
-        } catch(err) {
+        } catch(_) {
             try {
                 // fallback via util.inspect could be used but keep it lightweight
                 return String(params).slice(0, maxLen) + (String(params).length > maxLen ? '... (truncated)' : '');
-            } catch {
-                return '[unserializable params]';
-            }
+            } catch { return '[unserializable params]'; }
         }
     }
 
@@ -131,16 +128,16 @@ function createPrismaClient(): PrismaClient {
                 }
             } catch(err) {
                 // never allow logger issues to break app logic
-                logger.debug({ err }, 'Error while logging prisma query!');
+                logger.debug({ err: resolveError(err) }, 'Error while logging prisma query!');
             }
         });
 
         client.$on('error', (e: any) => {
             // e typically has .message/.stack
-            logger.error({ prisma: true, error: e }, 'Prisma runtime error');
+            logger.error({ prisma: true, error: resolveError(e) }, 'Prisma runtime error');
         });
         client.$on('warn', (e: any) => {
-            logger.warn({ prisma: true, warn: e }, 'Prisma warning');
+            logger.warn({ prisma: true, warn: resolveError(e) }, 'Prisma warning');
         });
 
         if(enableQueryEvents) {
@@ -206,7 +203,7 @@ export async function disconnectPrisma(): Promise<boolean> {
             return false;
         }
     } catch(err) {
-        logger.error({ err }, 'Error disconnecting Prisma client!');
+        logger.error({ err: resolveError(err) }, 'Error disconnecting Prisma client!');
         return false;
     }
 }

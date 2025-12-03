@@ -12,6 +12,8 @@ import {
     deleteRefreshAndCsrf,
 } from "../services/auth.service";
 import logger from "../lib/logger";
+import { ApiError, ErrorInstance } from "../errors/ApiError";
+import { resolveError } from "../utils/error/errorFactory.util";
 
 const router = Router();
 
@@ -41,8 +43,10 @@ function cookieOptions(ttlSeconds: number) {
 //? REGISTER
 router.post('/register', async (req, res) => {
     const parsed = registerSchema.safeParse(req.body);
-    if(!parsed.success) return res.status(400).json({ error: treeifyError(parsed.error) });
-
+    if(!parsed.success) {
+        const mappedError: ApiError = new ApiError(parsed.error.message, 400, ErrorInstance.HTTP, 'invalid_request-body', true, undefined, treeifyError(parsed.error)) as ApiError;
+        return res.status(400).json({ error: mappedError });
+    }
     const { email, password, username } = parsed.data;
     const exists = await prisma.user.findUnique({ where: { email } });
     if(exists) return res.status(409).json({ error: 'Email has already registered' });
@@ -57,7 +61,10 @@ router.post('/register', async (req, res) => {
 //? LOGIN
 router.post('/login', async (req, res) => {
     const parsed = loginSchema.safeParse(req.body);
-    if(!parsed.success) return res.status(400).json({ error: treeifyError(parsed.error) });
+    if(!parsed.success) {
+        const mappedError: ApiError = new ApiError(parsed.error.message, 400, ErrorInstance.HTTP, 'invalid_request-body', true, undefined, treeifyError(parsed.error)) as ApiError;
+        return res.status(400).json({ error: mappedError });
+    }
 
     const { email, password } = parsed.data;
     const user = await prisma.user.findUnique({ where: { email } });
@@ -105,7 +112,9 @@ router.post('/refresh', async (req, res) => {
     try {
         payload = verifyRefreshToken(refreshToken);
     } catch(err) {
-        return res.status(401).json({ error: 'Invalid refresh token!' });
+        const mapped = resolveError(err);
+        const mappedBody: ApiError = new ApiError(mapped.message ?? 'Invalid refresh token!', 401, ErrorInstance.HTTP, 'invalid_token: refresh-token', true) as ApiError;
+        return res.status(401).json({ error: mappedBody });
     }
 
     const jti = payload.jti;
@@ -152,7 +161,7 @@ router.post('/logout', async (req, res) => {
         payload = verifyRefreshToken(refreshToken);
     } catch(err) {
         // clear cookies anyway
-        logger.warn({ err }, 'Could not verify refresh token. Clearing cookies anyway...');
+        logger.warn({ err: resolveError(err) }, 'Could not verify refresh token. Clearing cookies anyway...');
         res.clearCookie('refresh_token', { path: '/' });
         res.clearCookie('csrf_token', { path: '/' });
         // send successful status due to indempotency and to avoid leaking information

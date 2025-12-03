@@ -22,7 +22,7 @@ const client = new Redis(REDIS_URL!, {
         const delay = Math.min(2000, Math.pow(2, times)*100);
         return delay;
     },
-    reconnectOnError(err) {
+    reconnectOnError(_) {
         return true;
     },
 });

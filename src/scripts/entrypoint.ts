@@ -1,10 +1,14 @@
 import { Client } from "pg";
-import type { Server } from "http";
-import { startServer } from "../index";
 import { spawnSync } from "child_process";
 
+import { startServer } from "../index";
 import { disconnectPrisma } from "../prisma/client";
 import logger from "../lib/logger";
+import { resolveError } from "../utils/error/errorFactory.util";
+import { ApiError, ErrorInstance, PrismaError } from "../errors/ApiError";
+import { PrismaErrorDetails } from "../models/errors/errorDetails.types";
+
+import type { Server } from "http";
 
 const MAX_RETRIES = 30;
 const RETRY_DELAY_MS = 2000;
@@ -36,18 +40,15 @@ async function waitForPostgres() {
             await client.connect();
             await client.query('SELECT 1');
             await client.end();
-            const attempt = i+1;
-            logger.info({ attempt }, 'Postgres is ready');
+            logger.info({ attempt: i+1 }, 'Postgres is ready');
             return;
         } catch(err) {
-            // TODO: replace with a convenient error handler
-            const attempt = i+1;
-            logger.warn({ attempt, err }, `Postgres not ready yet, retrying in ${RETRY_DELAY_MS}ms...`);
+            const mapped = resolveError(err);
+            logger.warn({ attempt: i+1, err: mapped }, `Postgres not ready yet, retrying in ${RETRY_DELAY_MS}ms...`);
             await new Promise((res) => setTimeout(res, RETRY_DELAY_MS));
         }
     }
-    // TODO: replace with custom error handler
-    throw new Error('Postgres did not become ready in time!');
+    throw new ApiError('Postgres did not become ready in time', 503, ErrorInstance.PG, 'retry failed', false);
 }
 
 function runMigrationsSyncIfConfigured() {
@@ -63,12 +64,19 @@ function runMigrationsSyncIfConfigured() {
     });
 
     if(res.error) {
-        logger.error({ err: res.error }, 'An error has occured during migrations!');
-        throw res.error; //TODO: better error handling
+        const mapped = resolveError(res.error);
+        logger.error({ err: mapped, original: res.error }, 'An error has occured during migrations');
+        throw mapped ?? res.error;
     }
     if(res.status !== 0) {
         logger.debug({ status: res.status }, `prisma migrate deploy exited with status ${res.status}`);
-        throw new Error('Migration error!');
+        const mapped = resolveError(res.error);
+        const prismaDetails: PrismaErrorDetails = {
+            prismaClientErrType: mapped ?? res.error,
+            errorMessage: mapped.message,
+            clientVersion: '<non-client-related>',
+        };
+        throw new PrismaError('Migration error!', 502, ErrorInstance.PRISMA, `prisma migrate deploy exited with status ${res.status}`, false, prismaDetails);
     }
     logger.info('Migrations applied successfully');
 }
@@ -93,7 +101,11 @@ async function gracefulShutdown(signal: string) {
     forceExitTimer = setTimeout(() => {
         logger.error('Graceful shutdown timedout. Destroying sockets and exiting...');
         for(const s of Array.from(liveSockets)) {
-            try { s.destroy(); } catch(e) { logger.warn({ s, e }, 'Error destroying socket'); }
+            try { s.destroy(); } 
+            catch(e) { 
+                const mapped = resolveError(e);
+                logger.warn({ socket: s, err: mapped }, 'Error destroying socket'); 
+            }
         }
         process.exit(1);
     }, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
@@ -103,7 +115,10 @@ async function gracefulShutdown(signal: string) {
         if(serverInstance) {
             await new Promise<void>((resolve) => {
                 serverInstance!.close((e?: Error) => {
-                    if(e) logger.error({ e }, 'Error closing server!');
+                    if(e) {
+                        const mapped = resolveError(e);
+                        logger.error({ error: mapped, original: e }, 'Error closing server!');
+                    }
                     else logger.info('HTTP server closed and no longer accepting new connections');
                     resolve();
                 });
@@ -115,25 +130,26 @@ async function gracefulShutdown(signal: string) {
             const prismaDisconnectPromise = disconnectPrisma();
             const disconnected = await Promise.race([
                 prismaDisconnectPromise,
-                new Promise<boolean>((_, rej) => setTimeout(() => rej(new Error('Prisma disconnect timout')), PRISMA_DISCONNECT_TIMEOUT_MS)),
+                new Promise<boolean>((_, rej) => setTimeout(() => rej(new ApiError('Prisma disconnect timeout', 504, ErrorInstance.API, 'response timeout', false)), PRISMA_DISCONNECT_TIMEOUT_MS)),
             ]);
 
             if(disconnected === true) logger.info('Prisma disconnected successfully');
             else { logger.info('Prisma was not initialized or already disconnected'); }
         } catch(err) {
-            logger.warn({ err }, 'Prisma did not cleanly disconnected within timeout');
+            const mapped = resolveError(err);
+            logger.warn({ err: mapped, original: err }, 'Prisma did not cleanly disconnected within timeout');
         }
 
         // close remaining sockets
         for(const s of Array.from(liveSockets)) {
-            try { s.destroy(); } catch(e) { logger.warn({ s, e }, 'Error destroying socket'); }
+            try { s.destroy(); } catch(e) { logger.warn({ socket: s, error: resolveError(e) }, 'Error destroying socket'); }
         }
 
         logger.info('Shutdown sequence complete, exiting with code 0');
         if(forceExitTimer) clearTimeout(forceExitTimer);
         process.exit(0);
     } catch(error) {
-        logger.error({ error }, 'Error during graceful shutdown!');
+        logger.error({ error: resolveError(error) }, 'Error during graceful shutdown!');
         if(forceExitTimer) clearTimeout(forceExitTimer);
         process.exit(1);
     }
@@ -143,11 +159,13 @@ async function start() {
 
     // handle uncaught exceptions/rejections for visibility and try shutdown gracefully
     process.on('unhandledRejection', (reason) => {
-        logger.error({ reason }, 'Unhandled Rejection: initiating graceful shutdown...');
+        const mapped = resolveError(reason);
+        logger.error({ reason: mapped }, 'Unhandled Rejection: initiating graceful shutdown...');
         void gracefulShutdown('unhandledRejection');
     });
     process.on('uncaughtException', (err) => {
-        logger.fatal({ err }, 'Uncaught Exception: initiating graceful shutdown...');
+        const mapped = resolveError(err);
+        logger.fatal({ err: mapped, original: err }, 'Uncaught Exception: initiating graceful shutdown...');
         void gracefulShutdown('uncaughtException');
     });
 
@@ -180,7 +198,6 @@ async function start() {
 }
 
 start().catch((err) => {
-    // TODO: optionally, implement custom error handler
     logger.error({ err }, 'Failed to start process!');
-    process.exit(1);
+    setTimeout(() => process.exit(1), 100).unref();
 });

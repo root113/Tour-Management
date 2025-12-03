@@ -22,7 +22,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
         req.user = { id: user.id, email: user.email, role: user.role };
         next();
-    } catch(err) {
+    } catch(_) {
         return res.status(401).json({ error: 'Invalid or expired access token!' });
     }
 }

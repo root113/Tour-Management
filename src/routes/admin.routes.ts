@@ -1,7 +1,5 @@
 import { Router } from "express";
 import adminController from "../controllers/admin.controller";
-//import middlewares
-//import dtos
 
 const router = Router();
 

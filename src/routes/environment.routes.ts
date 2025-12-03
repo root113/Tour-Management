@@ -1,7 +1,5 @@
 import { Router } from "express";
 import environmentController from "../controllers/environment.controller";
-// import middlewares
-// import dtos
 
 const router = Router();
 

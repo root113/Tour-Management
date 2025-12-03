@@ -12,6 +12,7 @@ import adminRoutes from "./routes/admin.routes";
 import authRoutes from "./routes/auth.routes";
 
 import { authenticate } from "./middlewares/authenticate";
+import { errorHandler } from "./middlewares/errors/errorHandler";
 import { errorLogger } from "./middlewares/logger/errorLogger";
 import { requestLoggerMiddleware } from "./middlewares/logger/requestLogger";
 
@@ -62,7 +63,8 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/v1/band', bandRoutes);
 app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/v1/environment', environmentRoutes);
-// app.use(handlers);
+
+app.use(errorHandler);
 app.use(errorLogger);
 
 // health/readiness endpoints

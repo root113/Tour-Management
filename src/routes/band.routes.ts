@@ -1,7 +1,6 @@
 import { Router } from "express";
 import bandController from "../controllers/band.controller";
-// import middlewares
-// import dtos
+
 
 const router = Router();
 

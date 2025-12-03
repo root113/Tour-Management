@@ -1,7 +1,5 @@
 import { Router } from "express";
 import calendarController from "../controllers/calendar.controller";
-// import middlewares
-// import dtos
 
 const router = Router();
 

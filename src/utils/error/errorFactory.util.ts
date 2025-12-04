@@ -71,8 +71,6 @@ function redisErrorFactory(err: unknown, req?: RequestDetails): RedisError {
     const raw = err as any;
     const message = raw?.message ?? 'Redis error';
     let status = 503;
-
-    // TODO: status ayarla
     
     const redisDetails: RedisErrorDetails = {
         name: raw?.name ?? String(raw?.constructor?.name ?? 'Redis error'),

@@ -146,7 +146,7 @@ export function classifyError(e: unknown): ErrorClassificationResult {
     if(isAggregateError(e)) matches.push(ErrorInstance.AGGREGATE);
     if(isNativeError(e)) matches.push(ErrorInstance.NATIVE);
     
-    // fallback: unclassified error
+    // fallback: unknown error
     if(matches.length === 0) matches.push(ErrorInstance.UNKNOWN);
 
     const primary: ErrorInstance = _assignPrimary(matches);

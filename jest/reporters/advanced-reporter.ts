@@ -61,7 +61,7 @@ class AdvancedJestReporter implements Reporter {
                 chalk.white.bold('Count'),
                 chalk.white.bold('Status')
             ],
-            colWidths: [20, 15, 15]
+            colWidths: [20, 13, 10]
         });
 
         const status = results.numFailedTests > 0
@@ -70,11 +70,11 @@ class AdvancedJestReporter implements Reporter {
 
         table.push(
             ['Test Suites', results.numTotalTestSuites.toString(), status],
-            ['Tests', results.numTotalTests.toString(), ''],
+            ['Tests', results.numTotalTests.toString(), '📝'],
             ['Passed', results.numPassedTests.toString(), chalk.green('✓')],
             ['Failed', results.numFailedTests.toString(), results.numFailedTests > 0 ? chalk.red('✗') : ''],
-            ['Pending', results.numPendingTests.toString()],
-            ['Duration', `${(duration / 1000).toFixed(2)}s`, '']
+            ['Pending', results.numPendingTests.toString(), '⌛'],
+            ['Duration', `${(duration / 1000).toFixed(2)}s`, '⏰']
         );
 
         console.log('\n' + table.toString());

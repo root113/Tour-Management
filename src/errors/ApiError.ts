@@ -35,6 +35,10 @@ export class ApiError extends Error {
         reqDetails?: unknown
     ) {
         super(message);
+
+        Object.setPrototypeOf(this, new.target.prototype);
+        this.name = this.constructor.name;
+
         this.status = status;
         this.instance = instance;
         this.internalCause = internalCause;
@@ -43,6 +47,13 @@ export class ApiError extends Error {
         this.cause = cause;
         this.reqDetails = reqDetails;
         
+        Object.defineProperty(this, 'message', {
+            value: message,
+            enumerable: true,
+            configurable: true,
+            writable: true
+        });
+
         Object.defineProperty(this, 'errorInfo', {
             value: this.constructor.name,
             enumerable: false,

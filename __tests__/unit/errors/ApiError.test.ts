@@ -308,7 +308,7 @@ describe('ApiError Class', () => {
 
         it('should have Error properties (name, stack)', () =>  {
             const error = new ApiError('msg', 500, ErrorInstance.NODE_SYS, 'test', true);
-            expect(error.name).toBe('Error');
+            expect(error.name).toBe('ApiError');
             if(error.stack) {
                 expect(typeof error.stack).toBe('string');
                 expect(error.stack).toContain('ApiError');
@@ -455,7 +455,8 @@ describe('RedisError Class', () => {
             expect(error.isOperational).toBe(true);
             expect(error.code).toBe('code');
             expect(error.cause).toBe(cause);
-            expect(error.redisDetails).toBeUndefined();
+            expect(error.redisDetails).toBe(mockRedisDetails);
+            expect(error.reqDetails).toBeUndefined();
         });
 
         it('should set errorInfo to RedisError', () => {
@@ -596,9 +597,9 @@ describe('Error Comparison & Equality', () => {
     });
 
     test('prismaError should not equal redisError even with same params', () => {
-        const prismaError = new PrismaError('msg', 500, ErrorInstance.PRISMA, 'internal', true, {} as any);
-        const redisError = new RedisError('msg', 500, ErrorInstance.REDIS, 'internal', true, {} as any);
-        expect(prismaError).not.toEqual(redisError);
+        const prismaError = new PrismaError('msg', 500, ErrorInstance.PRISMA, 'internal', true, {} as MockPrismaErrorDetails);
+        const redisError = new RedisError('msg', 500, ErrorInstance.REDIS, 'internal', true, {} as MockRedisErrorDetails);
+        expect(Object.keys(prismaError)).not.toEqual(Object.keys(redisError));
         expect(prismaError.constructor.name).not.toBe(redisError.constructor.name);
     });
 });

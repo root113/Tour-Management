@@ -1,9 +1,9 @@
 export type PrismaErrorDetails = {
-    prismaClientErrType: any;
-    errorMessage: string;
-    clientVersion: string;
-    prismaCode?: string | undefined;
-    meta?: any;
+    prismaClientErrType: any,
+    errorMessage: string,
+    clientVersion: string,
+    prismaCode?: string | undefined,
+    meta?: any
 };
 
 export type RedisErrorDetails = {

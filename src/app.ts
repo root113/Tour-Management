@@ -13,7 +13,6 @@ import authRoutes from "./routes/auth.routes";
 
 import { authenticate } from "./middlewares/authenticate";
 import { errorHandler } from "./middlewares/errors/errorHandler";
-import { errorLogger } from "./middlewares/logger/errorLogger";
 import { requestLoggerMiddleware } from "./middlewares/logger/requestLogger";
 
 import logger from "./lib/logger";
@@ -65,7 +64,6 @@ app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/v1/environment', environmentRoutes);
 
 app.use(errorHandler);
-app.use(errorLogger);
 
 // health/readiness endpoints
 app.get('/health', (_req, _res) => _res.status(200).json({ ok: true, env: process.env.NODE_ENV }));

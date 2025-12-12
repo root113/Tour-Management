@@ -7,6 +7,8 @@
 /node_modules
 /dist
 /dist-seed
+/cache
+/reports
 
 /src/generated/prisma
 /prisma/migrations/

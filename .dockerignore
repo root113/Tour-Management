@@ -23,6 +23,8 @@ pnpm-debug.log*
 .cache-loader
 .vscode
 .idea
+/cache
+/reports
 
 # OS files
 .DS_Store

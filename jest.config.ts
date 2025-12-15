@@ -84,7 +84,7 @@ const config: Config = {
     ],
     testPathIgnorePatterns: [                           //* regexp pattern strings that are matched against all test paths before executing the test
         '/node_modules/.+',
-        'jest/.+',
+        '/jest/.+',
         '<rootDir>/dist/',
         '<rootDir>/build/',
         '/coverage/.+',

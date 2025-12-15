@@ -1,0 +1,1 @@
+//& auto mock kayıtları buradan yap

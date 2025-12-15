@@ -83,8 +83,15 @@ const config: Config = {
         '<rootDir>/__tests__/**/*.{ts,tsx,js,jsx}'
     ],
     testPathIgnorePatterns: [                           //* regexp pattern strings that are matched against all test paths before executing the test
-        '<rootDir>/jest/reporters/',
-        '<rootDir>/node_modules/'
+        '/node_modules/.+',
+        'jest/.+',
+        '<rootDir>/dist/',
+        '<rootDir>/build/',
+        '/coverage/.+',
+        '/reports/.+',
+        '/\\..+',
+        '<rootDir>/\\.cache/',
+        '.*\\.config\\.(ts|js)$'
     ],
     testTimeout: 15000,                                 //* timeout of a test in ms
     transform: { '^.+\\.tsx?$': 'ts-jest' },            //* map from regexp to path to transformers

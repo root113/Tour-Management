@@ -7,7 +7,7 @@ export interface ErrorClassificationResult {
     meta?: Record<string, unknown>;
 }
 
-const _isObject = (v: unknown): v is Record<string, unknown> => (v != null || v !== undefined) && typeof v === 'object';
+const _isObject = (v: unknown): v is Record<string, unknown> => (v !== null && v !== undefined) && typeof v === 'object';
 const _isFiveCharCode = (s: string) => /^[0-9A-Z]{5}$/.test(s);
 const _isPrismaCode = (s: string) => _isFiveCharCode(s) && s.startsWith('P');
 
@@ -21,28 +21,33 @@ function isApiError(e: unknown): boolean {
 
 function isPrismaKnownError(e: unknown): boolean {
     if(!_isObject(e)) return false;
+    
     let isCheck: boolean = false;
     const condition: boolean = 
         (e as any)?.name === 'PrismaClientKnownRequestError' && 
         typeof (e as any)?.code === 'string' && 
         _isPrismaCode((e as any).code);
+    
     if(condition) isCheck = true;
     return isCheck;
 }
 
 function isPrismaAnyError(e: unknown): boolean {
     if(!_isObject(e)) return false;
+    
     let isCheck: boolean = false;
     const condition: boolean = 
         typeof (e as any)?.clientVersion === 'string' || 
         (typeof (e as any)?.name === 'string' && (e as any).name.startsWith?.('Prisma')) || 
         (typeof (e as any)?.code === 'string' && _isPrismaCode((e as any).code));
+    
     if(condition) isCheck = true;
     return isCheck;
 }
 
 function isRedisError(e: unknown): boolean {
     if(!_isObject(e)) return false;
+    
     let isCheck: boolean = false;
     const errKeys: [...string[]] = [
         'RedisError',
@@ -51,10 +56,12 @@ function isRedisError(e: unknown): boolean {
         'AbortError',
         'InterruptError'
     ];
+
     const msgRegex: RegExp = /\b(redis|Redis|ECONNREFUSED|CLUSTER)\b/;
-    const isMessage: boolean = (e as any).message ? typeof (e as any).message === 'string' && msgRegex.test((e as any).message) : false;
-    const hasProperty: boolean = (e as any).name ? errKeys.includes((e as any).name) : false;
+    const isMessage: boolean = (e as any)?.message ? typeof (e as any).message === 'string' && msgRegex.test((e as any).message) : false;
+    const hasProperty: boolean = (e as any)?.name ? errKeys.includes((e as any).name) : false;
     const condition: boolean = hasProperty || isMessage;
+    
     if(condition) isCheck = true;
     return isCheck;
 }
@@ -62,9 +69,11 @@ function isRedisError(e: unknown): boolean {
 function isPostgresError(e: unknown): boolean {
     if(!_isObject(e)) return false;
     let isCheck: boolean = false;
-    const isCode: boolean = (e as any).code ? typeof (e as any).code === 'string' && _isFiveCharCode((e as any).code) : false;
-    const isKeyWord: boolean = (e as any).severity || (e as any).routine || (e as any).table || (e as any).constraint;
+    
+    const isCode: boolean = (e as any)?.code ? typeof (e as any).code === 'string' && _isFiveCharCode((e as any).code) : false;
+    const isKeyWord: boolean = (e as any)?.severity || (e as any)?.routine || (e as any)?.table || (e as any)?.constraint;
     const condition: boolean = isCode && isKeyWord;
+    
     if(condition) isCheck = true;
     return isCheck;
 }
@@ -72,16 +81,19 @@ function isPostgresError(e: unknown): boolean {
 function isNodeSysError(e: unknown): boolean {
     if(!_isObject(e)) return false;
     let isCheck: boolean = false;
-    const hasCode: boolean = (e as any).code ? typeof (e as any).code === 'string' : false;
-    const hasProperty: boolean = 'code' in (e as any) && ('syscall' in (e as any) || 'errno' in (e as any));
-    const isFiveChar: boolean = _isFiveCharCode((e as any).code) ? hasProperty : false;
+    
+    const hasCode: boolean = (e as any)?.code ? typeof (e as any).code === 'string' : false;
+    const hasProperty: boolean = (e as any) != null ? 'code' in (e as any) && ('syscall' in (e as any) || 'errno' in (e as any)) : false;
+    const isFiveChar: boolean = _isFiveCharCode((e as any)?.code) ? hasProperty : false;
     const condition: boolean = hasCode && isFiveChar;
+    
     if(condition) isCheck = true;
     return isCheck;
 }
 
 function isHttpError(e: unknown): boolean {
     if(!_isObject(e)) return false;
+    
     let isCheck: boolean = false;
     const statusCodes: [...number[]] = [
         400, 401, 402, 403, 404, 405, 406, 407, 408, 409,
@@ -89,9 +101,11 @@ function isHttpError(e: unknown): boolean {
         422, 423, 424, 425, 426, 428, 429, 431, 451, 500,
         501, 502, 503, 504, 505, 506, 507, 508, 510, 511
     ];
-    const isStatus: boolean = (e as any).status || (e as any).statusCode ? typeof (e as any).status === 'number' || typeof (e as any).statusCode === 'number' : false;
-    const hasCode: boolean = statusCodes.includes((e as any).status) || statusCodes.includes((e as any).statusCode);
+
+    const isStatus: boolean = (e as any)?.status || (e as any)?.statusCode ? typeof (e as any).status === 'number' || typeof (e as any).statusCode === 'number' : false;
+    const hasCode: boolean = statusCodes.includes((e as any)?.status) || statusCodes.includes((e as any)?.statusCode);
     const condition: boolean = isStatus && hasCode;
+    
     if(condition) isCheck = true;
     return isCheck;
 }
@@ -99,7 +113,7 @@ function isHttpError(e: unknown): boolean {
 function isAggregateError(e: unknown): boolean {
     if(!_isObject(e)) return false;
     let isCheck: boolean = false;
-    const condition: boolean = (e as any).errors ? Array.isArray((e as any).errors) && (e as any).errors.length >= 0 : false;
+    const condition: boolean = (e as any)?.errors ? Array.isArray((e as any).errors) && (e as any).errors.length >= 0 : false;
     if(condition) isCheck = true;
     return isCheck;
 }
@@ -107,11 +121,13 @@ function isAggregateError(e: unknown): boolean {
 function isNativeError(e: unknown): boolean {
     if(!_isObject(e)) return false;
     let isCheck: boolean = false;
+    
     const isInstance: boolean = (e as any) instanceof Error;
-    const isProperty: boolean = (e as any).message && (e as any).name;
-    const isPropertyType: boolean = typeof (e as any).message === 'string' && typeof (e as any).name === 'string';
+    const isProperty: boolean = (e as any)?.message && (e as any)?.name;
+    const isPropertyType: boolean = typeof (e as any)?.message === 'string' && typeof (e as any)?.name === 'string';
     const isMergedCondition: boolean = isProperty ? isPropertyType : false;
     const condition: boolean = isInstance ? isInstance : isMergedCondition;
+    
     if(condition) isCheck = true;
     return isCheck;
 }
@@ -161,3 +177,19 @@ export function classifyError(e: unknown): ErrorClassificationResult {
     };
     return result;
 }
+
+export const __testInternals__ = {
+    isApiError,
+    isPrismaKnownError,
+    isPrismaAnyError,
+    isRedisError,
+    isPostgresError,
+    isNodeSysError,
+    isHttpError,
+    isAggregateError,
+    isNativeError,
+    _assignPrimary,
+    _isObject,
+    _isFiveCharCode,
+    _isPrismaCode
+};

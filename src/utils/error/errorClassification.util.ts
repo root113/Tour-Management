@@ -132,6 +132,30 @@ function isNativeError(e: unknown): boolean {
     return isCheck;
 }
 
+function isUnclassifiedError(e: unknown): boolean {
+    if(!_isObject(e)) return false;
+    
+    let isCheck: boolean = false;
+    const isAnyErr = 
+        isApiError(e) ||
+        isPrismaKnownError(e) ||
+        isPrismaAnyError(e) ||
+        isRedisError(e) ||
+        isPostgresError(e) ||
+        isNodeSysError(e) ||
+        isHttpError(e) ||
+        isAggregateError(e) ||
+        isNativeError(e);
+    
+    if(!isAnyErr) isCheck = true;
+    return isCheck;
+}
+
+function isUnknownError(e: unknown): boolean {
+    if(!_isObject(e)) return true;
+    return false;
+}
+
 //! order matters
 const PRIORITY: ErrorInstance[] = [
     ErrorInstance.API,
@@ -161,6 +185,8 @@ export function classifyError(e: unknown): ErrorClassificationResult {
     if(isHttpError(e)) matches.push(ErrorInstance.HTTP);
     if(isAggregateError(e)) matches.push(ErrorInstance.AGGREGATE);
     if(isNativeError(e)) matches.push(ErrorInstance.NATIVE);
+    if(isUnclassifiedError(e)) matches.push(ErrorInstance.UNCLASSIFIED);
+    if(isUnknownError(e)) matches.push(ErrorInstance.UNKNOWN);
     
     // fallback: unknown error
     if(matches.length === 0) matches.push(ErrorInstance.UNKNOWN);
@@ -188,6 +214,8 @@ export const __testInternals__ = {
     isHttpError,
     isAggregateError,
     isNativeError,
+    isUnclassifiedError,
+    isUnknownError,
     _assignPrimary,
     _isObject,
     _isFiveCharCode,

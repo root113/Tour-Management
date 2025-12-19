@@ -1,4 +1,4 @@
-import { __testInternals__ } from "../../../../src/utils/error/errorClassification.util";
+import { __testInternals__, classifyError } from "../../../../src/utils/error/errorClassification.util";
 import { ApiError, PrismaError, RedisError, ErrorInstance } from "../../../../src/errors/ApiError";
 
 type MockPrismaDetails = {
@@ -29,6 +29,8 @@ const {
     isHttpError,
     isAggregateError,
     isNativeError,
+    isUnclassifiedError,
+    isUnknownError,
     _assignPrimary,
     _isObject,
     _isFiveCharCode,
@@ -673,6 +675,50 @@ describe('isNativeError:', () => {
     });
 });
 
+describe('isUnclassifiedError:', () => {
+
+    it('isObject check should return false for invalid params', () => {
+        expect(isNativeError(undefined)).toBeFalsy();
+        expect(isNativeError(null)).toBeFalsy();
+        expect(isNativeError('str' as string)).toBeFalsy();
+        expect(isNativeError(BigInt(234) as bigint)).toBeFalsy();
+        expect(isNativeError(NaN as number)).toBeFalsy();
+        expect(isNativeError(true as boolean)).toBeFalsy();
+        expect(isNativeError(__foo())).toBeFalsy();
+    });
+
+    test('should return true if e does not belong to any classification of errors', () => {
+        expect(isUnclassifiedError({} as any)).toBeTruthy();
+    });
+
+    test('should return false if e falls into any classification of errors', () => {
+        const apiErr = new ApiError('msg', 400, ErrorInstance.API, 'internal', true);
+        const prismaKnownErr: { name: string, code: string } = { name: 'PrismaClientKnownRequestError', code: 'P1234' };
+        const prismaAnyErr: { name: string, code: string, clientVersion: string } = { name: 'PrismaSomeError', code: 'P1234', clientVersion: 'v1.23' };
+        const redisErr: { message: string, name: string } = { message: 'ECONNREFUSED', name: 'RedisError' };
+        const postgresErr: { code: string, severity: any } = { code: '12345', severity: {} };
+        const nodeSysErr: { code: string, syscall: any, errno: any } = { code: '12345', syscall: {}, errno: {} };
+        const httpErr: { status: number } = { status: 500 };
+        const aggregateErr: { errors: [...any] } = { errors: [{}, {}] };
+        const nativeErr = new Error('msg');
+
+        expect(isUnclassifiedError(apiErr)).toBeFalsy();
+        expect(isUnclassifiedError(prismaKnownErr)).toBeFalsy();
+        expect(isUnclassifiedError(prismaAnyErr)).toBeFalsy();
+        expect(isUnclassifiedError(redisErr)).toBeFalsy();
+        expect(isUnclassifiedError(postgresErr)).toBeFalsy();
+        expect(isUnclassifiedError(nodeSysErr)).toBeFalsy();
+        expect(isUnclassifiedError(httpErr)).toBeFalsy();
+        expect(isUnclassifiedError(aggregateErr)).toBeFalsy();
+        expect(isUnclassifiedError(nativeErr)).toBeFalsy();
+    });
+});
+
+describe('isUnknownError:', () => {
+    test('should return true if e is not an object', () => { expect(isUnknownError(undefined)).toBeTruthy() });
+    test('should return false if e is an object', () => { expect(isUnknownError({})).toBeFalsy() });
+});
+
 describe('_assignPrimary:', () => {
     beforeEach(() => jest.clearAllMocks());
     afterEach(() => jest.resetAllMocks());
@@ -800,6 +846,94 @@ describe('internal arrow functions:', () => {
 
         test('should return true if param is a 5-char string and starts with \'P\'', () => {
             expect(_isPrismaCode('P1234' as string)).toBeTruthy();
+        });
+    });
+});
+
+describe('classifyError:', () => {
+
+    describe('instance validation:', () => {
+        
+        describe('returned object\'s (ErrorClassificationResult) has valid primary & matches properties:', () => {
+            
+            const apiErr = new ApiError('msg', 400, ErrorInstance.API, 'internal', true);
+            const prismaKnownErr: { name: string, code: string } = { name: 'PrismaClientKnownRequestError', code: 'P1234' };
+            const prismaAnyErr: { name: string, code: string, clientVersion: string } = { name: 'PrismaSomeError', code: 'P1234', clientVersion: 'v1.23' };
+            const redisErr: { message: string, name: string } = { message: 'ECONNREFUSED', name: 'RedisError' };
+            const postgresErr: { code: string, severity: any } = { code: '12345', severity: {} };
+            const nodeSysErr: { code: string, syscall: any, errno: any } = { code: '12345', syscall: {}, errno: {} };
+            const httpErr: { status: number } = { status: 500 };
+            const aggregateErr: { errors: [...any] } = { errors: [{}, {}] };
+            const nativeErr = new Error('msg');
+            const unclassifiedErr = {} as any;
+            const unknownErr = undefined;
+
+            it('should have property \'matches\' in returned object and assigned to correct ErrorInstance values', () => {
+                expect(classifyError(apiErr)).toHaveProperty('matches', [ ErrorInstance.API, ErrorInstance.HTTP, ErrorInstance.NATIVE ] as ErrorInstance[]);
+                expect(classifyError(prismaKnownErr)).toHaveProperty('matches', [ ErrorInstance.PRISMA ] as ErrorInstance[]);
+                expect(classifyError(prismaAnyErr)).toHaveProperty('matches', [ ErrorInstance.PRISMA ] as ErrorInstance[]);
+                expect(classifyError(redisErr)).toHaveProperty('matches', [ ErrorInstance.REDIS, ErrorInstance.NATIVE ] as ErrorInstance[]);
+                expect(classifyError(postgresErr)).toHaveProperty('matches', [ ErrorInstance.PG ] as ErrorInstance[]);
+                expect(classifyError(nodeSysErr)).toHaveProperty('matches', [ ErrorInstance.NODE_SYS ] as ErrorInstance[]);
+                expect(classifyError(httpErr)).toHaveProperty('matches', [ ErrorInstance.HTTP ] as ErrorInstance[]);
+                expect(classifyError(aggregateErr)).toHaveProperty('matches', [ ErrorInstance.AGGREGATE ] as ErrorInstance[]);
+                expect(classifyError(nativeErr)).toHaveProperty('matches', [ ErrorInstance.NATIVE ] as ErrorInstance[]);
+                expect(classifyError(unclassifiedErr)).toHaveProperty('matches', [ ErrorInstance.UNCLASSIFIED ] as ErrorInstance[]);
+                expect(classifyError(unknownErr)).toHaveProperty('matches', [ ErrorInstance.UNKNOWN ] as ErrorInstance[]);
+            });
+
+            it('should have property \'primary\' in returned object and assigned to correct ErrorInstance value with correct priority', () => {
+                expect(classifyError(apiErr)).toHaveProperty('primary', ErrorInstance.API);
+                expect(classifyError(prismaKnownErr)).toHaveProperty('primary', ErrorInstance.PRISMA);
+                expect(classifyError(prismaAnyErr)).toHaveProperty('primary', ErrorInstance.PRISMA);
+                expect(classifyError(redisErr)).toHaveProperty('primary', ErrorInstance.REDIS);
+                expect(classifyError(postgresErr)).toHaveProperty('primary', ErrorInstance.PG);
+                expect(classifyError(nodeSysErr)).toHaveProperty('primary', ErrorInstance.NODE_SYS);
+                expect(classifyError(httpErr)).toHaveProperty('primary', ErrorInstance.HTTP);
+                expect(classifyError(aggregateErr)).toHaveProperty('primary', ErrorInstance.AGGREGATE);
+                expect(classifyError(nativeErr)).toHaveProperty('primary', ErrorInstance.NATIVE);
+                expect(classifyError(unclassifiedErr)).toHaveProperty('primary', ErrorInstance.UNCLASSIFIED);
+                expect(classifyError(unknownErr)).toHaveProperty('primary', ErrorInstance.UNKNOWN);
+            });
+        });
+    });
+
+    describe('does it return valid object:', () => {
+        const err = new ApiError('msg', 400, ErrorInstance.API, 'internal', true);
+
+        it('should return object of type ErrorClassificationResult', () => {
+            expect(classifyError(err)).not.toBeNull();
+            expect(classifyError(err)).not.toBeUndefined();
+
+            expect(classifyError(err)).toHaveProperty('matches');
+            expect(classifyError(err)).toHaveProperty('conflict');
+            expect(classifyError(err)).toHaveProperty('primary');
+            expect(classifyError(err)).toHaveProperty('meta');
+
+            expect(Object.keys(classifyError(err))).toHaveLength(4);
+            expect(Object.keys(classifyError(err))).toEqual(['matches', 'conflict', 'primary', 'meta']);
+        });
+
+        it('should return object with valid properties', () => {
+            expect(Array.isArray(classifyError(err).matches)).toBe(true);
+            expect(classifyError(err).matches).not.toBeNull();
+            expect(classifyError(err).matches).not.toBeUndefined();
+
+            expect(typeof classifyError(err).conflict).toBe('number');
+            expect(classifyError(err).conflict).not.toBeNull();
+            expect(classifyError(err).conflict).not.toBeUndefined();
+            
+            expect(typeof classifyError(err).primary).toBe('string');
+            expect(classifyError(err).primary).not.toBeNull();
+            expect(classifyError(err).primary).not.toBeUndefined();
+            
+            expect(typeof classifyError(err).meta).toBe('object');
+            expect(classifyError(err).meta).toHaveProperty('candidateKeys');
+            expect(classifyError(err).meta).not.toBeNull();
+            expect(classifyError(err).meta).not.toBeUndefined();
+
+            expect(classifyError(err).meta?.candidateKeys).not.toBeNull();
+            expect(classifyError(err).meta?.candidateKeys).not.toBeUndefined();
         });
     });
 });

@@ -137,23 +137,23 @@ function httpErrorFactory(err: unknown, req?: RequestDetails): ApiError {
 
 function aggregateErrorFactory(err: unknown, req?: RequestDetails): ApiError {
     const raw = err as any;
-    const message = raw?.message ?? 'Aggregate error: multiple errors occured';
-    const internalCause = raw?.name ?? 'aggregate_error';
+    const message = raw?.message && typeof raw?.message === 'string' ? raw.message : 'Aggregate error: multiple errors occured';
+    const internalCause = raw?.name && typeof raw?.name === 'string' ? raw.name : 'aggregate_error';
     const cause = raw?.errors ?? raw;
     return new ApiError(message, 400, ErrorInstance.AGGREGATE, internalCause, true, undefined, cause, { length: Array.isArray(raw?.errors) ? raw.errors.length : undefined, req });
 }
 
 function nativeErrorFactory(err: unknown, req?: RequestDetails): ApiError {
     const raw = err as any;
-    const message = raw?.message ?? 'Internal server error';
-    const internalCause = raw?.name ?? 'native_error';
+    const message = raw?.message && typeof raw?.message === 'string' ? raw.message : 'Internal server error';
+    const internalCause = raw?.name && typeof raw?.name === 'string' ? raw.name : 'native_error';
     const cause = raw;
     return new ApiError(message, 500, ErrorInstance.NATIVE, internalCause, false, raw?.code, cause, { stack: raw?.stack, req });
 }
 
 // fallback: unclassified error
 function unclassifiedErrorFactory(err: unknown, req?: RequestDetails): ApiError {
-    const message = (err as any)?.message ?? 'Unknown error: error instance could not be classified';
+    const message = (err as any)?.message && typeof (err as any).message === 'string' ? (err as any).message : 'Unknown error: error instance could not be classified';
     return new ApiError(message, 500, ErrorInstance.UNCLASSIFIED, 'unclassified_error', true, undefined, err, { req });
 }
 
@@ -162,3 +162,16 @@ function unknownErrorObjectFacory(err: unknown, req?: RequestDetails): ApiError 
     const message = 'Unknown error object (unable to map error properties)';
     return new ApiError(message, 500, ErrorInstance.UNKNOWN, 'unknown_error', true, undefined, err, { req });
 }
+
+export const __testInternals__ = {
+    apiGenericFactory,
+    prismaErrorFactory,
+    redisErrorFactory,
+    postgresErrorFactory,
+    nodeSysErrorFactory,
+    httpErrorFactory,
+    aggregateErrorFactory,
+    nativeErrorFactory,
+    unclassifiedErrorFactory,
+    unknownErrorObjectFacory
+};

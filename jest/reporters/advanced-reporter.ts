@@ -73,7 +73,7 @@ class AdvancedJestReporter implements Reporter {
             ['Tests', results.numTotalTests.toString(), '📝'],
             ['Passed', results.numPassedTests.toString(), chalk.green('✓')],
             ['Failed', results.numFailedTests.toString(), results.numFailedTests > 0 ? chalk.red('✗') : ''],
-            ['Pending', results.numPendingTests.toString(), '⌛'],
+            ['Skipped', results.numPendingTests.toString(), '⌛'],
             ['Duration', `${(duration / 1000).toFixed(2)}s`, '⏰']
         );
 

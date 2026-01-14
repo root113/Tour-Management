@@ -1,5 +1,7 @@
 import { ApiError, ErrorInstance, PrismaError, RedisError } from "../../../../src/errors/ApiError";
-import { __testInternals__ } from "../../../../src/utils/error/errorFactory.util";
+import { __testInternals__, resolveError } from "../../../../src/utils/error/errorFactory.util";
+
+import type { PrismaErrorDetails, RedisErrorDetails } from "../../../../src/models/errors/errorDetails.types";
 
 const {
     apiGenericFactory,
@@ -35,6 +37,103 @@ const requestDetails: MockRequestDetails = {
     requestBody: {} as any,
     userAgent: {} as any
 };
+
+describe('resolveError:', () => {
+
+    describe('return error as it is if it is already an instance of ApiError/PrismaError/RedisError:', () => {
+
+        it('should return ApiError when passed ApiError as param', () => {
+            const err = new ApiError('msg', 500, ErrorInstance.API, '_', true);
+            expect(resolveError(err, requestDetails)).toBeDefined();
+            expect(resolveError(err, requestDetails)).toBeInstanceOf(ApiError);
+        });
+
+        it('should return PrismaError when passed PrismaError as param', () => {
+            const prismaErrDetails: PrismaErrorDetails = {
+                prismaClientErrType: {},
+                errorMessage: 'msg',
+                clientVersion: 'v1.4.2'
+            };
+            const err = new PrismaError('msg', 500, ErrorInstance.REDIS, 'str', true, prismaErrDetails);
+
+            expect(resolveError(err, requestDetails)).toBeDefined();
+            expect(resolveError(err, requestDetails)).toBeInstanceOf(PrismaError);
+            expect(resolveError(err, requestDetails)).toBeInstanceOf(ApiError);
+        });
+
+        it('should return RedisError when passed RedisError as param', () => {
+            const redisErrDetails: RedisErrorDetails = { name: '_', message: 'msg' };
+            const err = new RedisError('msg', 500, ErrorInstance.REDIS, 'str', true, redisErrDetails);
+
+            expect(resolveError(err, requestDetails)).toBeDefined();
+            expect(resolveError(err, requestDetails)).toBeInstanceOf(RedisError);
+            expect(resolveError(err, requestDetails)).toBeInstanceOf(ApiError);
+        });
+    });
+
+    describe('return an error object according to its root:', () => {
+
+        it('should return ApiError with ErrorInstance.API as instance for generic errors', () => {
+            const genericErr = new ApiError('msg', 500, ErrorInstance.API, 'str', false);
+            expect(resolveError(genericErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(genericErr, requestDetails).instance).toMatch(ErrorInstance.API);
+        });
+
+        it('should return ApiError with ErrorInstance.PG as instance for postgres errors', () => {
+            const pgErr = { code: '12345', severity: 'FATAL' };
+            expect(resolveError(pgErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(pgErr, requestDetails).instance).toMatch(ErrorInstance.PG);
+        });
+
+        it('should return ApiError with ErrorInstance.NODE as instance for node system errors', () => {
+            const nodeSysErr = { code: '12345', syscall: {}, errno: {} };
+            expect(resolveError(nodeSysErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(nodeSysErr, requestDetails).instance).toMatch(ErrorInstance.NODE_SYS);
+        });
+
+        it('should return ApiError with ErrorInstance.HTTP as instance for http alike errors', () => {
+            const httpErr = { status: 409 };
+            expect(resolveError(httpErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(httpErr, requestDetails).instance).toMatch(ErrorInstance.HTTP);
+        });
+
+        it('should return ApiError with ErrorInstance.AGGREGATE as instance for aggregate errors', () => {
+            const aggregateErr = { errors: [1, 2, 3] };
+            expect(resolveError(aggregateErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(aggregateErr, requestDetails).instance).toMatch(ErrorInstance.AGGREGATE);
+        });
+
+        it('should return ApiError with ErrorInstance.NATIVE as instance for native errors', () => {
+            const nativeErr = new Error('msg');
+            expect(resolveError(nativeErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(nativeErr, requestDetails).instance).toMatch(ErrorInstance.NATIVE);
+        });
+
+        it('should return ApiError with ErrorInstance.UNCLASSIFIED as instance for any error which does not belong to any category', () => {
+            const unclassifiedErr = { x: NaN, y: null, z: {} };
+            expect(resolveError(unclassifiedErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(unclassifiedErr, requestDetails).instance).toMatch(ErrorInstance.UNCLASSIFIED);
+        });
+
+        it('should return ApiError with ErrorInstance.UNKNOWN as instance for any root error instance that is not an object', () => {
+            const unknownErr: number = NaN;
+            expect(resolveError(unknownErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(unknownErr, requestDetails).instance).toMatch(ErrorInstance.UNKNOWN);
+        });
+
+        it('should return PrismaError with ErrorInstance.PRISMA as instance for prisma errors', () => {
+            const prismaErr = { name: 'PrismaClientKnownRequestError', code: 'P2025' };
+            expect(resolveError(prismaErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(prismaErr, requestDetails).instance).toMatch(ErrorInstance.PRISMA);
+        });
+
+        it('should return RedisError with ErrorInstance.REDIS as instance for redis errors', () => {
+            const redisErr = { message: 'ECONNREFUSED' };
+            expect(resolveError(redisErr, requestDetails).instance).toBeDefined();
+            expect(resolveError(redisErr, requestDetails).instance).toMatch(ErrorInstance.REDIS);
+        });
+    });
+});
 
 describe('apiGenericFactory:', () => {
 
